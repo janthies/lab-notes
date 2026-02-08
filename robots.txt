@@ -1,0 +1,4 @@
+User-agent: *
+Disallow:
+Allow: /
+Sitemap: https://janthies.github.io/lab-notes/sitemap.xml
