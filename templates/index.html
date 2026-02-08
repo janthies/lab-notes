@@ -1,5 +1,29 @@
 <html>
+<head>
+    <meta charset="utf-8">
+    <title>Lab Notes</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 700px;
+            margin: 80px auto;
+            padding: 0 20px;
+            line-height: 1.6;
+        }
+        a { color: inherit; }
+        ul { list-style: none; padding: 0; }
+        li { margin: 8px 0; }
+    </style>
+</head>
 <body>
-<h1>Blog</h1>
+    <h1>Lab Notes</h1>
+    <p>Bare metal programming notes by Jan.</p>
+    <hr>
+    {% set section = get_section(path="_index.md", metadata_only=false) %}
+    {% for page in section.pages %}
+    <ul>
+        <li>{{ page.date }} — <a href="{{ page.permalink }}">{{ page.title }}</a></li>
+    </ul>
+    {% endfor %}
 </body>
 </html>
