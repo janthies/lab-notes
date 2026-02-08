@@ -67,7 +67,7 @@
             margin: 28px 0 8px;
         }
 
-        p { margin: 12px 0; }
+        p { margin: 12px 0; text-align: justify; }
 
         a { color: var(--link); }
 
@@ -131,12 +131,33 @@
     <h1>Building a Bare Metal Scheduler on an STM32H7</h1>
     <div class="meta">2026-02-08</div>
     <h1 id="starting-situation">Starting situation</h1>
-<p>As a weekend project I decided to give bare metal programming a shot. What started with some basic blinking of an led and firing an interrupt when a button is pressed turned into writing a small task switcher / scheduler.
+<p>As a weekend project I decided to give bare metal programming a shot. What started with some basic blinking of an led
+and firing an interrupt when a button is pressed turned into writing a small task switcher / scheduler.
 By the end of this post I hope you have a rough idea on what path I took, what challenges I encountered and how I overcame them.</p>
 <p>As a computer science student myself, I am by no means an authoritative source lalilu. feel free to get in contact</p>
 <h1 id="the-problem">The problem</h1>
 <p>Bare metal programming is fun. It is just you, your development board and a 3357 page reference manual written in dense and technical prose.</p>
 <h1 id="toolchain-build-process">toolchain / build process</h1>
+<p>If you have done something with an Arduino before you might be familiar with the term <strong>flashing</strong>.
+Flashing describes the process of writing executable program code to the Read Only Memory (ROM) of our Microcontroller Unit (MCU). Now there are two major
+problems to solve. How do we get executable code and how do we flash it to our MCU?</p>
+<h2 id="target-board">Target Board</h2>
+<p>The board I use is an STM32 <a rel="external" href="https://www.st.com/en/evaluation-tools/nucleo-h723zg.html">Nucleo-H723ZG</a> as shown in the photo below.
+<img src="https://janthies.github.io/lab-notes/bare-metal-scheduler/nucleo.png" alt="test" />
+Now inside the red box is
+what we care about. It is the <a rel="external" href="https://www.st.com/en/microcontrollers-microprocessors/stm32h723-733.html">STM32H723 MCU</a>. The MCU itself then contains
+a single Arm Cortex-M7 core running at up to 550MHz. Apart from that the MCU also contains the FLASH memory that, for all intents and purposes serves as our ROM.
+Yes, we write to Read Only Memory, welcome to the world of embedded programming.</p>
+<p>Now inside the blue box is something interesting, it is another MCU! <em>Wait!</em> you might say. <em>Didn't you just tell me that there's only a single core processor?
+But now two processors? That doesn't make sense!</em> Well, I'm sure this is obvious to some but being precise with the language being used is of importance here.
+The white Printed Circuit Board (PCB) you can see is the <strong>Development Board</strong>. It contains our MCU (red rectangle) but also a whole bunch of other peripherals.
+In the green rectangle are some LEDs that are connected to the MCU and can be lit up on demand. The MCU itself now contains a processing
+core, namely an ARM Cortex-M7. In order for us to have an easier time talking to our MCU, the MCU in the blue rectangle is running a software called <strong>ST-Link</strong>.
+At a later stage, ST-Link will help us flash some executable code from our computer to the MCU in the red rectangle, our target chip. If the second
+MCU were not there, we would need special hardware for communicating with our MCU.</p>
+<h2 id="compiling">Compiling</h2>
+<h2 id="linking">Linking</h2>
+<h2 id="building-an-executable">Building an Executable</h2>
 <p>how to get code running on an embedded device</p>
 <p>basic sections</p>
 <p>reset handler</p>
