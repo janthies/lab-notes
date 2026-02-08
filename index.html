@@ -1,29 +1,67 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Lab Notes</title>
     <style>
-        body {
-            font-family: monospace;
-            max-width: 700px;
-            margin: 80px auto;
-            padding: 0 20px;
-            line-height: 1.6;
+        :root {
+            --bg: #fdfdfd;
+            --fg: #222;
+            --dim: #666;
+            --border: #ddd;
+            --link: #1a6fb5;
         }
-        a { color: inherit; }
-        ul { list-style: none; padding: 0; }
-        li { margin: 8px 0; }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1a1a1a;
+                --fg: #d4d4d4;
+                --dim: #888;
+                --border: #333;
+                --link: #6fb8e0;
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'IBM Plex Mono', 'Courier New', monospace;
+            font-size: 15px;
+            line-height: 1.7;
+            color: var(--fg);
+            background: var(--bg);
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 60px 24px;
+        }
+
+        h1 { font-size: 22px; margin-bottom: 8px; }
+
+        .subtitle {
+            color: var(--dim);
+            font-size: 13px;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        a { color: var(--link); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .post { margin: 16px 0; }
+        .post-date { color: var(--dim); font-size: 13px; }
     </style>
 </head>
 <body>
     <h1>Lab Notes</h1>
-    <p>Bare metal programming notes by Jan.</p>
-    <hr>
+    <p class="subtitle">Bare metal programming notes by Jan.</p>
+
     
     
-    <ul>
-        <li>2026-02-08 — <a href="https:&#x2F;&#x2F;janthies.github.io&#x2F;lab-notes&#x2F;bare-metal-scheduler&#x2F;">Building a Bare Metal Scheduler</a></li>
-    </ul>
+    <div class="post">
+        <span class="post-date">2026-02-08</span>
+        — <a href="https:&#x2F;&#x2F;janthies.github.io&#x2F;lab-notes&#x2F;bare-metal-scheduler&#x2F;">Building a Bare Metal Scheduler on an STM32H7</a>
+    </div>
     
 </body>
 </html>

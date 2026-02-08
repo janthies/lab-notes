@@ -1,11 +1,158 @@
 <html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Building a Bare Metal Scheduler on an STM32H7 — Lab Notes</title>
+    <style>
+        :root {
+            --bg: #fdfdfd;
+            --fg: #222;
+            --dim: #666;
+            --border: #ddd;
+            --code-bg: #f5f5f5;
+            --link: #1a6fb5;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1a1a1a;
+                --fg: #d4d4d4;
+                --dim: #888;
+                --border: #333;
+                --code-bg: #242424;
+                --link: #6fb8e0;
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'IBM Plex Mono', 'Courier New', monospace;
+            font-size: 15px;
+            line-height: 1.7;
+            color: var(--fg);
+            background: var(--bg);
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 60px 24px;
+        }
+
+        nav { margin-bottom: 48px; }
+        nav a { color: var(--dim); text-decoration: none; font-size: 13px; }
+        nav a:hover { color: var(--fg); }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .meta {
+            color: var(--dim);
+            font-size: 13px;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h2 {
+            font-size: 17px;
+            font-weight: 700;
+            margin: 36px 0 12px;
+        }
+
+        h3 {
+            font-size: 15px;
+            font-weight: 700;
+            margin: 28px 0 8px;
+        }
+
+        p { margin: 12px 0; }
+
+        a { color: var(--link); }
+
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 16px 0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        code {
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        p code {
+            background: var(--code-bg);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        img {
+            max-width: 100%;
+            margin: 16px 0;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        blockquote {
+            border-left: 3px solid var(--border);
+            padding-left: 16px;
+            color: var(--dim);
+            margin: 16px 0;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 13px;
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 32px 0;
+        }
+    </style>
+</head>
 <body>
-<h1 id="content-bare-metal-scheduler-md">content/bare-metal-scheduler.md</h1>
-<h2 id="the-problem">The Problem</h2>
-<p>When running on bare metal, there's no OS to schedule tasks for you...</p>
-<p>Your normal markdown content goes here. Code blocks work as expected:
-yes this is cool
-oh yeah</p>
+    <nav><a href="/">← lab-notes</a></nav>
+    <h1>Building a Bare Metal Scheduler on an STM32H7</h1>
+    <div class="meta">2026-02-08</div>
+    <h1 id="starting-situation">Starting situation</h1>
+<p>As a weekend project I decided to give bare metal programming a shot. What started with some basic blinking of an led and firing an interrupt when a button is pressed turned into writing a small task switcher / scheduler.
+By the end of this post I hope you have a rough idea on what path I took, what challenges I encountered and how I overcame them.</p>
+<p>As a computer science student myself, I am by no means an authoritative source lalilu. feel free to get in contact</p>
+<h1 id="the-problem">The problem</h1>
+<p>Bare metal programming is fun. It is just you, your development board and a 3357 page reference manual written in dense and technical prose.</p>
+<h1 id="toolchain-build-process">toolchain / build process</h1>
+<p>how to get code running on an embedded device</p>
+<p>basic sections</p>
+<p>reset handler</p>
+<h1 id="blinky-example">Blinky example</h1>
+<p>reading the reference sheet</p>
+<p>configuring and writing to some basic registers</p>
+<h1 id="your-three-best-friends">Your three best friends</h1>
+<p>memory map / clock tree / gdb</p>
+<h1 id="leveling-up-switching-from-asm-to-c">Leveling up | switching from asm to C</h1>
+<p>more about sections</p>
+<p>crt0</p>
+<h1 id="execution-context">Execution context</h1>
+<p>what does a task need to execute</p>
+<p>how to configure a tasks context</p>
+<p>how to load and store a task</p>
+<h1 id="looking-forward">Looking forward</h1>
 <pre class="giallo" style="color: #CDD6F4; background-color: #1E1E2E;"><code data-lang="c"><span class="giallo-l"><span style="color: #CBA6F7;">void</span><span style="color: #89B4FA;font-style: italic;"> scheduler_init</span><span style="color: #9399B2;">(</span><span style="color: #CBA6F7;">void</span><span style="color: #9399B2;">) {</span></span>
 <span class="giallo-l"><span style="color: #9399B2;font-style: italic;">    // ...</span></span>
 <span class="giallo-l"><span style="color: #9399B2;">}</span></span></code></pre><pre class="giallo" style="color: #CDD6F4; background-color: #1E1E2E;"><code data-lang="plain"><span class="giallo-l"></span>
