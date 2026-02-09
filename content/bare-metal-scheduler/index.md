@@ -3,21 +3,30 @@
 title = "Building a Bare Metal Scheduler on an STM32H7"
 date = 2026-02-08
 description = "Notes on writing a simple round-robin scheduler from scratch"
+[extra]
+toc = true
 +++
 
 # Starting situation
 
 As a weekend project I decided to give bare metal programming a shot. What started with some basic blinking of an led
 and firing an interrupt when a button is pressed turned into writing a small task switcher / scheduler.
-By the end of this post I hope you have a rough idea on what path I took, what challenges I encountered and how I overcame them.
+In this post I hope to take you along the path I took, the challgenges I encountered and how i overcame them.
 
-As a computer science student myself, I am by no means an authoritative source lalilu. feel free to get in contact 
+In order to appreciate this post you should probably be familiar with the C programming language. I am not talking about crazy macro expansions
+and the like but declaring structs, dealing with pointers and  passing functions as arguments to other functions shouldn't be too unfamiliar.
+Knowing a thing or two about computer architecture and what a register is would be helpful too.
+
+// TODO
+getting in contact
+
+errata
 
 # The problem
 Bare metal programming is fun. It is just you, your development board and a 3357 page reference manual written in dense and technical prose.
 
 
-# toolchain / build process
+# Building and running code on the ST32H7
 If you have done something with an Arduino before you might be familiar with the term **flashing**.
 Flashing describes the process of writing executable program code to the Read Only Memory (ROM) of our Microcontroller Unit (MCU). Now there are two major
 problems to solve. How do we get executable code and how do we flash it to our MCU?
@@ -38,8 +47,84 @@ core, namely an ARM Cortex-M7. In order for us to have an easier time talking to
 At a later stage, ST-Link will help us flash some executable code from our computer to the MCU in the red rectangle, our target chip. If the second
 MCU were not there, we would need special hardware for communicating with our MCU.
 
-## Compiling
+## Helpful information
+Most if not all of the things I convey in this post I have read in the documentation and datasheets regarding the hardware in question. I would like to point
+out the relevant documents once more because knowing where to find relevant and original information is what will help you understand most.
 
+The [Nucleo-H723ZG user manual](https://www.st.com/resource/en/user_manual/um2407-stm32h7-nucleo144-boards-mb1364-stmicroelectronics.pdf) contains plenty of useful
+information regarding the development board. Here we can find information regarding the flashing process, pin connections and more.
+
+The [STM32H723 reference manual](https://www.st.com/resource/en/reference_manual/rm0468-stm32h723733-stm32h725735-and-stm32h730-value-line-advanced-armbased-32bit-mcus-stmicroelectronics.pdf)
+was the most daunting document for me when starting out because of its 3000+ page count. Register addresses, offsets, usage, the functional description of certain hardware blocks,
+documentation on all peripherals, the clock tree. This document has it all. Knowing where to look in order to find relevant information can be a bit challengeing but once gets used to it.
+
+Next we have the [Cortex-M7 generic user guide](https://documentation-service.arm.com/static/61efd6602dd99944d051417b?token=) and the [Cortex-M7 technical reference manual](https://documentation-service.arm.com/static/5e906b038259fe2368e2a7bb?token=).
+Whenever we need to find processor core specific documentation, this is the go to source.
+
+Lastly, knowing the differences between the Cortex-M7 and the STM32H723 can be a bit confusing at first. The Cortex-M7 is the processor core, doing the computation. The STM32H7
+is our **System on Chip (SoC)**. The SoC contains the Cortex-M7, furthermore it contains FLASH storage that can hold our executable code. RAM that serves as the working memory
+for the core. Different functional blocks like the USART block for transceiving serial data or the EXTI block for interrupt handling.
+
+When the need arises, we will go much deeper on each individual topic.
+For now, having a grasp on the different levels of abstraction we are dealing with and where to find relevant information should suffice.
+
+
+## Compiling
+Compiling our code for the target platform is the next step. In the world of embedded we usually talk about **cross-compilation** because the computer
+we write and compile the code on is usually somewhat different from the platform we are targetting. As a little experiment, running *lscpu* give the following output:
+
+```c
+jan@jan:~$ lscpu
+Architecture:                x86_64
+  CPU op-mode(s):            32-bit, 64-bit
+  Address sizes:             39 bits physical, 48 bits virtual
+  Byte Order:                Little Endian
+CPU(s):                      8
+  On-line CPU(s) list:       0-7
+Vendor ID:                   GenuineIntel
+  Model name:                11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
+  ...
+
+```
+Now we can see that the architecture is x86_64. Taking a look at the [ARM Cortex-m7 reference manual](https://documentation-service.arm.com/static/5e906b038259fe2368e2a7bb?token=)
+we find under section *1.4.1* that this processor is implementing the Armv7E-M architecture. That is quiet different from my pc! The architecture, more formally known as
+an **Instruction Set Architecture** is the interface between the software we write and the hardware that is going to execute it. We need to find a compiler that translates
+our already architecture specific assembly code, and later also our architecture agnostic C code, into machine that can be executed by the STM32H7.
+
+### Writing the code that brings our MCU to life
+The code I am talking about is so called startup code. This is the code that runs first and configures our MCU in a usable way.
+Taking a look in the [generic user guide](https://documentation-service.arm.com/static/61efd6602dd99944d051417b?token=) for our
+ARM Cortex-M7, we can find some words regarding the reset behaviour of our chip in section 2.1.3. Skipping past the core registers
+we find the following text:
+
+*The Program Counter (PC) is register R15. It contains the current program address. On reset, the processor loads the PC with the value
+of the reset vector, which is at the initial value of the Vector Table Offset Register (VTOR) plus 0x00000004.
+Bit[0] of the value is loaded into the EPSR T-bit at reset and must be 1*.
+
+Now this is interesting and tells us exactly what to do! The second we give electrical power to our MCU, it looks at a specific memory address,
+loads the data at that memory address into the **Program Counter** and then continues executing from there. Now the program counter tells us which command the
+ MCU is currently executing. The text also mentioned the **Reset Vector**. The reset vector is a routine whose address we would like to store in that specific
+memory address, so that it runs right away when the system first receives power.
+
+A bit further down under section 2.3.4 we can read about the **Vector Table**. The vector table is an area in memory that stores a bunch of important addresses
+to routines the MCU would like to execute in certain scenarios. Those scenarios include system reset, different fault conditions we might want to recover from
+but also repeating time intervals that might remember us to do something. 
+
+**Vector Table of the Cortex-M7**
+
+![Vector Table](vector_table.png)
+In the vector table we can see that our reset vector is at offset 0x0004. That is 32 bit above the Initial Stack Pointer Value entry which is located at offset 0x0000. *Offset?*
+you might wonder. Yeah exactly, we now know the location of our reset vector and initial SP relative to the vector table but the vector table itself is located at a different location.
+
+
+
+
+arm-none-eabi-as
+arm-none-eabi-gcc
+
+### Inspecting the code we just created
+
+arm-none-eabi-objdump
 
 ## Linking
 
