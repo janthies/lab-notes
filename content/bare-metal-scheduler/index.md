@@ -211,8 +211,13 @@ jan@jan:~$ arm-none-eabi-nm a.out
          U _estack
          U reset_handler
 ```
+*Compiling and inspecting main.s*
 
-Providing a simple yet useless *reset_handler* could look like so:
+*_estack* we will define at a later stage as we will first need to know where in memory our stack should reside. We can, however,
+provide a *reset_handler* at this point in time. *reset_handler* is the routine that will eventually launch our application,
+call other routines that set up our execution environment and eventually yield to our trusty **main()** function. For now though,
+*reset_handler* will do nothing.
+
 ```C
 .section .vtable
         .word _estack
@@ -225,6 +230,8 @@ loop:
         nop
         b loop
 ```
+*main.s is now equipped with a simple yet useless reset handler*
+
 We are now providing a routine that executes a bunch of *nop* (no operation) instructions in a loop, effectively idling.
 Describing what is happening here we have a symbol *reset_handler* that is also the second entry in our *vector table*.
 We have another symbol *loop* right past *reset_handler* so that the control flow is falling through *reset_handler*
@@ -235,22 +242,51 @@ the EPSR T-bit at reset and must be 1*. This is what *thumb_func* takes care of 
 ARM & Thumb mode but further reading can be done [here](https://azeria-labs.com/arm-instruction-set-part-3/). I would just like to say that this
 directive is not optional and your code will not run should you forget adding the label.
 
-What is a section
+I want to cover sections next. Sections let us group similar information together. 
+Grouping data with data and code with code turns out to be handy for a number of reasons. A more thorough
+walkthrough of the **Executable and Linkable Fileformat** (ELF) can be found [here](https://www.linuxjournal.com/article/1059).
+For our case it will be important that our uninitialized and initialized data reside in different sections, namely *.bss* and *.data*.
+Some special handling is needed when we eventually want to level up from asm to C as C has some requirements on what has to happen before
+*void main(void)* is called.
 
-What is a word
+```C
+int uninitialized_data;
+int initialized_data = 42;
+```
+*Depending on how variables are declared in C they will reside in different sections of the binary*
 
-simple reset handler just doing nops
-
-assembling with arm-none-eabi-as
 
 ### Inspecting the code we just created
+I would like to take the time to look at what we have got so far. Running our Assembler *arm-none-eabi-as* on the latest version
+of *main.s* gave us a file called *a.out*. We can inspect *a.out* with a tool called *arm-none-eabi-objdump*. Here we find our
+*reset_handler* again. Noteworthy is the address of 00000000 right next to *reset_handler*. Earlier we have noted that,
+in order for our program to run on an STM32H7 we need to put *reset_handler* at location 0x08000000. Yet right now it is at
+location 0x00000000 Earlier we have noted that,
+in order for our program to run on an STM32H7 we need to put *reset_handler* at location 0x08000000. Yet right now it is at
+location 0x00000000. *This ain't gonna work then!* I hear you say. *You're god damn right* I reply. In the next chapter we will
+learn how we can link and relocate our relocatable object file into an exectuable file that an STM32H7 can understand.
 
-arm-none-eabi-objdump
+```C
+jan@jan:~$ arm-none-eabi-objdump -dS a.out 
+
+a.out:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+00000000 <reset_handler>:
+   0:   46c0            nop                     @ (mov r8, r8)
+   2:   e7fd            b.n     0 <reset_handler>
+```
+*Inspecting the contents of a.out with arm-none-eabi-objdump*
+
 
 ## Linking
 relocatable code
 
-basic sections
+basic linker script
+
+basic sections (.text .bss. data)
 
 ## Flashing
 
