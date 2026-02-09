@@ -65,6 +65,21 @@
             font-style: italic;
             font-family: 'Georgia', 'Times New Roman', serif;
         }
+        img {
+            max-width: 100%;
+            margin: 16px auto;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            display: block;
+        }
+        img + em {
+            display: block;
+            text-align: center;
+            font-size: 12px;
+            color: var(--dim);
+            margin-top: -8px;
+            margin-bottom: 16px;
+        }
         a { color: var(--link); }
         pre {
             background: var(--code-bg);
@@ -84,12 +99,6 @@
             background: var(--code-bg);
             padding: 2px 5px;
             border-radius: 3px;
-        }
-        img {
-            max-width: 100%;
-            margin: 16px 0;
-            border: 1px solid var(--border);
-            border-radius: 4px;
         }
         blockquote {
             border-left: 3px solid var(--border);
@@ -168,11 +177,13 @@
                 
                 <li><a href="https:&#x2F;&#x2F;janthies.github.io&#x2F;lab-notes&#x2F;bare-metal-scheduler&#x2F;#helpful-information">Helpful information</a></li>
                 
-                <li><a href="https:&#x2F;&#x2F;janthies.github.io&#x2F;lab-notes&#x2F;bare-metal-scheduler&#x2F;#compiling">Compiling</a></li>
+                <li><a href="https:&#x2F;&#x2F;janthies.github.io&#x2F;lab-notes&#x2F;bare-metal-scheduler&#x2F;#target-architecture">Target architecture</a></li>
+                
+                <li><a href="https:&#x2F;&#x2F;janthies.github.io&#x2F;lab-notes&#x2F;bare-metal-scheduler&#x2F;#writing-the-code-that-brings-our-mcu-to-life">Writing the code that brings our MCU to life</a></li>
                 
                 <li><a href="https:&#x2F;&#x2F;janthies.github.io&#x2F;lab-notes&#x2F;bare-metal-scheduler&#x2F;#linking">Linking</a></li>
                 
-                <li><a href="https:&#x2F;&#x2F;janthies.github.io&#x2F;lab-notes&#x2F;bare-metal-scheduler&#x2F;#building-an-executable">Building an Executable</a></li>
+                <li><a href="https:&#x2F;&#x2F;janthies.github.io&#x2F;lab-notes&#x2F;bare-metal-scheduler&#x2F;#flashing">Flashing</a></li>
                 
             </ul>
             
@@ -180,9 +191,13 @@
         
             <li><a href="https:&#x2F;&#x2F;janthies.github.io&#x2F;lab-notes&#x2F;bare-metal-scheduler&#x2F;#blinky-example">Blinky example</a>
             
-            </li>
-        
-            <li><a href="https:&#x2F;&#x2F;janthies.github.io&#x2F;lab-notes&#x2F;bare-metal-scheduler&#x2F;#your-three-best-friends">Your three best friends</a>
+            <ul>
+                
+                <li><a href="https:&#x2F;&#x2F;janthies.github.io&#x2F;lab-notes&#x2F;bare-metal-scheduler&#x2F;#your-three-best-friends">your three best friends</a></li>
+                
+                <li><a href="https:&#x2F;&#x2F;janthies.github.io&#x2F;lab-notes&#x2F;bare-metal-scheduler&#x2F;#blinking-an-led">Blinking an led</a></li>
+                
+            </ul>
             
             </li>
         
@@ -219,9 +234,9 @@ getting in contact</p>
 Flashing describes the process of writing executable program code to the Read Only Memory (ROM) of our Microcontroller Unit (MCU). Now there are two major
 problems to solve. How do we get executable code and how do we flash it to our MCU?</p>
 <h2 id="target-board">Target Board</h2>
-<p>The board I use is an STM32 <a rel="external" href="https://www.st.com/en/evaluation-tools/nucleo-h723zg.html">Nucleo-H723ZG</a> as shown in the photo below.
-<img src="https://janthies.github.io/lab-notes/bare-metal-scheduler/nucleo.png" alt="test" />
-Now inside the red box is
+<p>The board I use is an STM32 <a rel="external" href="https://www.st.com/en/evaluation-tools/nucleo-h723zg.html">Nucleo-H723ZG</a> as shown in the photo below.</p>
+<p><img src="https://janthies.github.io/lab-notes/bare-metal-scheduler/nucleo.png" alt="test" /></p>
+<p>Now inside the red box is
 what we care about. It is the <a rel="external" href="https://www.st.com/en/microcontrollers-microprocessors/stm32h723-733.html">STM32H723 MCU</a>. The MCU itself then contains
 a single Arm Cortex-M7 core running at up to 550MHz. Apart from that the MCU also contains the FLASH memory that, for all intents and purposes serves as our ROM.
 Yes, we write to Read Only Memory, welcome to the world of embedded programming.</p>
@@ -247,7 +262,7 @@ is our <strong>System on Chip (SoC)</strong>. The SoC contains the Cortex-M7, fu
 for the core. Different functional blocks like the USART block for transceiving serial data or the EXTI block for interrupt handling.</p>
 <p>When the need arises, we will go much deeper on each individual topic.
 For now, having a grasp on the different levels of abstraction we are dealing with and where to find relevant information should suffice.</p>
-<h2 id="compiling">Compiling</h2>
+<h2 id="target-architecture">Target architecture</h2>
 <p>Compiling our code for the target platform is the next step. In the world of embedded we usually talk about <strong>cross-compilation</strong> because the computer
 we write and compile the code on is usually somewhat different from the platform we are targetting. As a little experiment, running <em>lscpu</em> give the following output:</p>
 <pre class="giallo" style="color: #CDD6F4; background-color: #1E1E2E;"><code data-lang="c"><span class="giallo-l"><span>jan@jan:</span><span style="color: #94E2D5;">~</span><span>$ lscpu</span></span>
@@ -265,7 +280,7 @@ we write and compile the code on is usually somewhat different from the platform
 we find under section <em>1.4.1</em> that this processor is implementing the Armv7E-M architecture. That is quiet different from my pc! The architecture, more formally known as
 an <strong>Instruction Set Architecture</strong> is the interface between the software we write and the hardware that is going to execute it. We need to find a compiler that translates
 our already architecture specific assembly code, and later also our architecture agnostic C code, into machine that can be executed by the STM32H7.</p>
-<h3 id="writing-the-code-that-brings-our-mcu-to-life">Writing the code that brings our MCU to life</h3>
+<h2 id="writing-the-code-that-brings-our-mcu-to-life">Writing the code that brings our MCU to life</h2>
 <p>The code I am talking about is so called startup code. This is the code that runs first and configures our MCU in a usable way.
 Taking a look in the <a rel="external" href="https://documentation-service.arm.com/static/61efd6602dd99944d051417b?token=">generic user guide</a> for our
 ARM Cortex-M7, we can find some words regarding the reset behaviour of our chip in section 2.1.3. Skipping past the core registers
@@ -276,28 +291,80 @@ Bit[0] of the value is loaded into the EPSR T-bit at reset and must be 1</em>.</
 <p>Now this is interesting and tells us exactly what to do! The second we give electrical power to our MCU, it looks at a specific memory address,
 loads the data at that memory address into the <strong>Program Counter</strong> and then continues executing from there. Now the program counter tells us which command the
 MCU is currently executing. The text also mentioned the <strong>Reset Vector</strong>. The reset vector is a routine whose address we would like to store in that specific
-memory address, so that it runs right away when the system first receives power.</p>
+memory address, so that it runs right away when the system first receives power</p>
 <p>A bit further down under section 2.3.4 we can read about the <strong>Vector Table</strong>. The vector table is an area in memory that stores a bunch of important addresses
 to routines the MCU would like to execute in certain scenarios. Those scenarios include system reset, different fault conditions we might want to recover from
 but also repeating time intervals that might remember us to do something.</p>
 <p><strong>Vector Table of the Cortex-M7</strong></p>
 <p><img src="https://janthies.github.io/lab-notes/bare-metal-scheduler/vector_table.png" alt="Vector Table" />
-In the vector table we can see that our reset vector is at offset 0x0004. That is 32 bit above the Initial Stack Pointer Value entry which is located at offset 0x0000. <em>Offset?</em>
-you might wonder. Yeah exactly, we now know the location of our reset vector and initial SP relative to the vector table but the vector table itself is located at a different location.</p>
-<p>arm-none-eabi-as
-arm-none-eabi-gcc</p>
+<em><a rel="external" href="https://documentation-service.arm.com/static/61efd6602dd99944d051417b?token=">generic user guide P. 36</a></em></p>
+<p>In the vector table we can see that our reset vector is at offset 0x0004. That is 32 bit above the Initial Stack Pointer Value entry. Now the inital SP value is of importance too!
+The stack is continuous memory serving as our programs scratch space. Whenever we need to remember important data we can put it there. The SP points to the head of our stack. Pushing
+i.e. 4 bytes onto our stack moves our SP by ... exactly, 4 bytes. Popping those same 4 bytes again moves our SP. The processor does this automatically for us. Under section 2.1.2 in the
+Cortex-M7 generic user guide, we find that the stack pointer decreases on push and increases on pop. This implies that later, when figuring out an appropriate value for our initial SP
+assignment, we should take the last address of our stack address space.</p>
+<p>The initial SP is located at offset 0x0000. <em>Offset?</em> you might wonder. Yeah exactly, we now know the location of our reset vector and initial SP relative to the vector table
+but the vector table itself is located at a different location.</p>
+<p>In order to know at which memory location the vector table lives, we need to take a look at the STM32H7 reference manual again. Remember? Flash and Ram are part of our SoC, information
+regarding the positioning and boot address thus can be found there. Under section 2.6 in the reference manual we find the following table:
+<img src="https://janthies.github.io/lab-notes/bare-metal-scheduler/boot_modes.png" alt="Boot modes" />
+Here we get to know about the boot process of the STM32H7 and that the standard boot address for this specific MCU is 0x08000000. That is exactly where we want to put our vector
+table once it is done.</p>
+<p>Writing what we know so far as code gives us the following glorious three lines of assembly (asm).</p>
+<p><strong>main.s</strong></p>
+<pre class="giallo" style="color: #CDD6F4; background-color: #1E1E2E;"><code data-lang="c"><span class="giallo-l"><span>.section .vtable</span></span>
+<span class="giallo-l"><span>  .word _estack</span></span>
+<span class="giallo-l"><span>  .word reset_handler</span></span></code></pre>
+<p>Now a couple questions arise that I would like to point out at this moment in time.
+We have not yet defined our inital SP value called <em>_estack</em>. We don't know what a <em>.section</em> is.
+There is no <em>reset_handler</em> yet and lastly, how do we put all of this at the right position in Flash so
+that our MCU can actually find it.</p>
+<p>I would like to start with our two yet undefined variables. Compiling our <em>main.s</em> program with <em>arm-none-eabi-as</em>
+yields a file called <em>a.out</em>. Further inspecting <em>a.out</em> with <em>arm-none-eabi-nm</em> we see that both <em>_estack</em> and <em>reset_handler</em>
+are marked as <em>U</em>, meaning Undefined.</p>
+<pre class="giallo" style="color: #CDD6F4; background-color: #1E1E2E;"><code data-lang="c"><span class="giallo-l"><span>jan@jan:</span><span style="color: #94E2D5;">~</span><span>$ arm</span><span style="color: #94E2D5;">-</span><span>none</span><span style="color: #94E2D5;">-</span><span>eabi</span><span style="color: #94E2D5;">-</span><span>as main.s </span></span>
+<span class="giallo-l"><span>jan@jan:</span><span style="color: #94E2D5;">~</span><span>$ ls</span></span>
+<span class="giallo-l"><span>a.out  main.s</span></span>
+<span class="giallo-l"><span>jan@jan:</span><span style="color: #94E2D5;">~</span><span>$ arm</span><span style="color: #94E2D5;">-</span><span>none</span><span style="color: #94E2D5;">-</span><span>eabi</span><span style="color: #94E2D5;">-</span><span>nm a.out </span></span>
+<span class="giallo-l"><span>         U _estack</span></span>
+<span class="giallo-l"><span>         U reset_handler</span></span></code></pre>
+<p>Providing a simple yet useless <em>reset_handler</em> could look like so:</p>
+<pre class="giallo" style="color: #CDD6F4; background-color: #1E1E2E;"><code data-lang="c"><span class="giallo-l"><span>.section .vtable</span></span>
+<span class="giallo-l"><span>        .word _estack</span></span>
+<span class="giallo-l"><span>        .word reset_handler</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span>.section .text</span></span>
+<span class="giallo-l"><span>.thumb_func</span></span>
+<span class="giallo-l"><span>reset_handler:</span></span>
+<span class="giallo-l"><span>loop:</span></span>
+<span class="giallo-l"><span>        nop</span></span>
+<span class="giallo-l"><span>        b loop</span></span></code></pre>
+<p>We are now providing a routine that executes a bunch of <em>nop</em> (no operation) instructions in a loop, effectively idling.
+Describing what is happening here we have a symbol <em>reset_handler</em> that is also the second entry in our <em>vector table</em>.
+We have another symbol <em>loop</em> right past <em>reset_handler</em> so that the control flow is falling through <em>reset_handler</em>
+to <em>loop</em>. <em>loop</em> contains two instructions, our <em>nop</em> and a <em>b</em> (branch) back to the loop label. <em>.thumb_func</em> might not be so obvious
+at the first glance. <em>.thumb_func</em> is an assembler directive telling the assembler that the next function is a thumb function. <em>Shocker, I know</em>.
+You might remember the excerpt from the generic user guide at the start of this chapter saying that <em>Bit[0] of the value is loaded into
+the EPSR T-bit at reset and must be 1</em>. This is what <em>thumb_func</em> takes care of for us. At this point in time I prefer to not go depth on
+ARM &amp; Thumb mode but further reading can be done <a rel="external" href="https://azeria-labs.com/arm-instruction-set-part-3/">here</a>. I would just like to say that this
+directive is not optional and your code will not run should you forget adding the label.</p>
+<p>What is a section</p>
+<p>What is a word</p>
+<p>simple reset handler just doing nops</p>
+<p>assembling with arm-none-eabi-as</p>
 <h3 id="inspecting-the-code-we-just-created">Inspecting the code we just created</h3>
 <p>arm-none-eabi-objdump</p>
 <h2 id="linking">Linking</h2>
-<h2 id="building-an-executable">Building an Executable</h2>
-<p>how to get code running on an embedded device</p>
+<p>relocatable code</p>
 <p>basic sections</p>
-<p>reset handler</p>
+<h2 id="flashing">Flashing</h2>
 <h1 id="blinky-example">Blinky example</h1>
+<p>building a small blinky application</p>
+<h2 id="your-three-best-friends">your three best friends</h2>
+<p>memory map / clock tree / gdb</p>
+<h2 id="blinking-an-led">Blinking an led</h2>
 <p>reading the reference sheet</p>
 <p>configuring and writing to some basic registers</p>
-<h1 id="your-three-best-friends">Your three best friends</h1>
-<p>memory map / clock tree / gdb</p>
 <h1 id="leveling-up-switching-from-asm-to-c">Leveling up | switching from asm to C</h1>
 <p>more about sections</p>
 <p>crt0</p>
