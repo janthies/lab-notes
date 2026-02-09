@@ -22,8 +22,46 @@ getting in contact
 
 errata
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # The problem
 Bare metal programming is fun. It is just you, your development board and a 3357 page reference manual written in dense and technical prose.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Building and running code on the ST32H7
@@ -31,9 +69,15 @@ If you have done something with an Arduino before you might be familiar with the
 Flashing describes the process of writing executable program code to the Read Only Memory (ROM) of our Microcontroller Unit (MCU). Now there are two major
 problems to solve. How do we get executable code and how do we flash it to our MCU?
 
+
+
+
+
 ## Target Board
 The board I use is an STM32 [Nucleo-H723ZG](https://www.st.com/en/evaluation-tools/nucleo-h723zg.html) as shown in the photo below.
+
 ![test](nucleo.png)
+
 Now inside the red box is
 what we care about. It is the [STM32H723 MCU](https://www.st.com/en/microcontrollers-microprocessors/stm32h723-733.html). The MCU itself then contains
 a single Arm Cortex-M7 core running at up to 550MHz. Apart from that the MCU also contains the FLASH memory that, for all intents and purposes serves as our ROM.
@@ -46,6 +90,10 @@ In the green rectangle are some LEDs that are connected to the MCU and can be li
 core, namely an ARM Cortex-M7. In order for us to have an easier time talking to our MCU, the MCU in the blue rectangle is running a software called **ST-Link**.
 At a later stage, ST-Link will help us flash some executable code from our computer to the MCU in the red rectangle, our target chip. If the second
 MCU were not there, we would need special hardware for communicating with our MCU.
+
+
+
+
 
 ## Helpful information
 Most if not all of the things I convey in this post I have read in the documentation and datasheets regarding the hardware in question. I would like to point
@@ -69,7 +117,10 @@ When the need arises, we will go much deeper on each individual topic.
 For now, having a grasp on the different levels of abstraction we are dealing with and where to find relevant information should suffice.
 
 
-## Compiling
+
+
+
+## Target architecture
 Compiling our code for the target platform is the next step. In the world of embedded we usually talk about **cross-compilation** because the computer
 we write and compile the code on is usually somewhat different from the platform we are targetting. As a little experiment, running *lscpu* give the following output:
 
@@ -91,7 +142,11 @@ we find under section *1.4.1* that this processor is implementing the Armv7E-M a
 an **Instruction Set Architecture** is the interface between the software we write and the hardware that is going to execute it. We need to find a compiler that translates
 our already architecture specific assembly code, and later also our architecture agnostic C code, into machine that can be executed by the STM32H7.
 
-### Writing the code that brings our MCU to life
+
+
+
+
+## Writing the code that brings our MCU to life
 The code I am talking about is so called startup code. This is the code that runs first and configures our MCU in a usable way.
 Taking a look in the [generic user guide](https://documentation-service.arm.com/static/61efd6602dd99944d051417b?token=) for our
 ARM Cortex-M7, we can find some words regarding the reset behaviour of our chip in section 2.1.3. Skipping past the core registers
@@ -104,7 +159,7 @@ Bit[0] of the value is loaded into the EPSR T-bit at reset and must be 1*.
 Now this is interesting and tells us exactly what to do! The second we give electrical power to our MCU, it looks at a specific memory address,
 loads the data at that memory address into the **Program Counter** and then continues executing from there. Now the program counter tells us which command the
  MCU is currently executing. The text also mentioned the **Reset Vector**. The reset vector is a routine whose address we would like to store in that specific
-memory address, so that it runs right away when the system first receives power.
+memory address, so that it runs right away when the system first receives power
 
 A bit further down under section 2.3.4 we can read about the **Vector Table**. The vector table is an area in memory that stores a bunch of important addresses
 to routines the MCU would like to execute in certain scenarios. Those scenarios include system reset, different fault conditions we might want to recover from
@@ -113,37 +168,108 @@ but also repeating time intervals that might remember us to do something.
 **Vector Table of the Cortex-M7**
 
 ![Vector Table](vector_table.png)
-In the vector table we can see that our reset vector is at offset 0x0004. That is 32 bit above the Initial Stack Pointer Value entry which is located at offset 0x0000. *Offset?*
-you might wonder. Yeah exactly, we now know the location of our reset vector and initial SP relative to the vector table but the vector table itself is located at a different location.
+*[generic user guide P. 36](https://documentation-service.arm.com/static/61efd6602dd99944d051417b?token=)*
 
+In the vector table we can see that our reset vector is at offset 0x0004. That is 32 bit above the Initial Stack Pointer Value entry. Now the inital SP value is of importance too!
+The stack is continuous memory serving as our programs scratch space. Whenever we need to remember important data we can put it there. The SP points to the head of our stack. Pushing
+i.e. 4 bytes onto our stack moves our SP by ... exactly, 4 bytes. Popping those same 4 bytes again moves our SP. The processor does this automatically for us. Under section 2.1.2 in the
+Cortex-M7 generic user guide, we find that the stack pointer decreases on push and increases on pop. This implies that later, when figuring out an appropriate value for our initial SP
+assignment, we should take the last address of our stack address space.
 
+The initial SP is located at offset 0x0000. *Offset?* you might wonder. Yeah exactly, we now know the location of our reset vector and initial SP relative to the vector table
+but the vector table itself is located at a different location.
 
+In order to know at which memory location the vector table lives, we need to take a look at the STM32H7 reference manual again. Remember? Flash and Ram are part of our SoC, information
+regarding the positioning and boot address thus can be found there. Under section 2.6 in the reference manual we find the following table:
+![Boot modes](boot_modes.png)
+Here we get to know about the boot process of the STM32H7 and that the standard boot address for this specific MCU is 0x08000000. That is exactly where we want to put our vector
+table once it is done.
 
-arm-none-eabi-as
-arm-none-eabi-gcc
+Writing what we know so far as code gives us the following glorious three lines of assembly (asm).
+
+**main.s**
+```C
+.section .vtable
+  .word _estack
+  .word reset_handler
+```
+
+Now a couple questions arise that I would like to point out at this moment in time.
+We have not yet defined our inital SP value called *_estack*. We don't know what a *.section* is.
+There is no *reset_handler* yet and lastly, how do we put all of this at the right position in Flash so
+that our MCU can actually find it.
+
+I would like to start with our two yet undefined variables. Compiling our *main.s* program with *arm-none-eabi-as*
+yields a file called *a.out*. Further inspecting *a.out* with *arm-none-eabi-nm* we see that both *_estack* and *reset_handler*
+are marked as *U*, meaning Undefined.
+
+```C
+jan@jan:~$ arm-none-eabi-as main.s 
+jan@jan:~$ ls
+a.out  main.s
+jan@jan:~$ arm-none-eabi-nm a.out 
+         U _estack
+         U reset_handler
+```
+
+Providing a simple yet useless *reset_handler* could look like so:
+```C
+.section .vtable
+        .word _estack
+        .word reset_handler
+
+.section .text
+.thumb_func
+reset_handler:
+loop:
+        nop
+        b loop
+```
+We are now providing a routine that executes a bunch of *nop* (no operation) instructions in a loop, effectively idling.
+Describing what is happening here we have a symbol *reset_handler* that is also the second entry in our *vector table*.
+We have another symbol *loop* right past *reset_handler* so that the control flow is falling through *reset_handler*
+to *loop*. *loop* contains two instructions, our *nop* and a *b* (branch) back to the loop label. *.thumb_func* might not be so obvious
+at the first glance. *.thumb_func* is an assembler directive telling the assembler that the next function is a thumb function. *Shocker, I know*.
+You might remember the excerpt from the generic user guide at the start of this chapter saying that *Bit[0] of the value is loaded into
+the EPSR T-bit at reset and must be 1*. This is what *thumb_func* takes care of for us. At this point in time I prefer to not go depth on
+ARM & Thumb mode but further reading can be done [here](https://azeria-labs.com/arm-instruction-set-part-3/). I would just like to say that this
+directive is not optional and your code will not run should you forget adding the label.
+
+What is a section
+
+What is a word
+
+simple reset handler just doing nops
+
+assembling with arm-none-eabi-as
 
 ### Inspecting the code we just created
 
 arm-none-eabi-objdump
 
 ## Linking
-
-
-
-## Building an Executable 
-how to get code running on an embedded device
+relocatable code
 
 basic sections
 
-reset handler
+## Flashing
+
+
+
 
 # Blinky example
+building a small blinky application
+
+
+## your three best friends
+memory map / clock tree / gdb
+
+
+## Blinking an led
 reading the reference sheet
 
 configuring and writing to some basic registers
 
-# Your three best friends
-memory map / clock tree / gdb
 
 # Leveling up | switching from asm to C
 more about sections
