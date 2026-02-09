@@ -80,6 +80,14 @@
             margin-top: -8px;
             margin-bottom: 16px;
         }
+        pre + p > em:only-child {
+            display: block;
+            text-align: center;
+            font-size: 12px;
+            color: var(--dim);
+            margin-top: -8px;
+            margin-bottom: 16px;
+        }
         a { color: var(--link); }
         pre {
             background: var(--code-bg);
@@ -328,7 +336,11 @@ are marked as <em>U</em>, meaning Undefined.</p>
 <span class="giallo-l"><span>jan@jan:</span><span style="color: #94E2D5;">~</span><span>$ arm</span><span style="color: #94E2D5;">-</span><span>none</span><span style="color: #94E2D5;">-</span><span>eabi</span><span style="color: #94E2D5;">-</span><span>nm a.out </span></span>
 <span class="giallo-l"><span>         U _estack</span></span>
 <span class="giallo-l"><span>         U reset_handler</span></span></code></pre>
-<p>Providing a simple yet useless <em>reset_handler</em> could look like so:</p>
+<p><em>Compiling and inspecting main.s</em></p>
+<p><em>_estack</em> we will define at a later stage as we will first need to know where in memory our stack should reside. We can, however,
+provide a <em>reset_handler</em> at this point in time. <em>reset_handler</em> is the routine that will eventually launch our application,
+call other routines that set up our execution environment and eventually yield to our trusty <strong>main()</strong> function. For now though,
+<em>reset_handler</em> will do nothing.</p>
 <pre class="giallo" style="color: #CDD6F4; background-color: #1E1E2E;"><code data-lang="c"><span class="giallo-l"><span>.section .vtable</span></span>
 <span class="giallo-l"><span>        .word _estack</span></span>
 <span class="giallo-l"><span>        .word reset_handler</span></span>
@@ -339,6 +351,7 @@ are marked as <em>U</em>, meaning Undefined.</p>
 <span class="giallo-l"><span>loop:</span></span>
 <span class="giallo-l"><span>        nop</span></span>
 <span class="giallo-l"><span>        b loop</span></span></code></pre>
+<p><em>main.s is now equipped with a simple yet useless reset handler</em></p>
 <p>We are now providing a routine that executes a bunch of <em>nop</em> (no operation) instructions in a loop, effectively idling.
 Describing what is happening here we have a symbol <em>reset_handler</em> that is also the second entry in our <em>vector table</em>.
 We have another symbol <em>loop</em> right past <em>reset_handler</em> so that the control flow is falling through <em>reset_handler</em>
@@ -348,15 +361,39 @@ You might remember the excerpt from the generic user guide at the start of this 
 the EPSR T-bit at reset and must be 1</em>. This is what <em>thumb_func</em> takes care of for us. At this point in time I prefer to not go depth on
 ARM &amp; Thumb mode but further reading can be done <a rel="external" href="https://azeria-labs.com/arm-instruction-set-part-3/">here</a>. I would just like to say that this
 directive is not optional and your code will not run should you forget adding the label.</p>
-<p>What is a section</p>
-<p>What is a word</p>
-<p>simple reset handler just doing nops</p>
-<p>assembling with arm-none-eabi-as</p>
+<p>I want to cover sections next. Sections let us group similar information together.
+Grouping data with data and code with code turns out to be handy for a number of reasons. A more thorough
+walkthrough of the <strong>Executable and Linkable Fileformat</strong> (ELF) can be found <a rel="external" href="https://www.linuxjournal.com/article/1059">here</a>.
+For our case it will be important that our uninitialized and initialized data reside in different sections, namely <em>.bss</em> and <em>.data</em>.
+Some special handling is needed when we eventually want to level up from asm to C as C has some requirements on what has to happen before
+<em>void main(void)</em> is called.</p>
+<pre class="giallo" style="color: #CDD6F4; background-color: #1E1E2E;"><code data-lang="c"><span class="giallo-l"><span style="color: #CBA6F7;">int</span><span> uninitialized_data</span><span style="color: #9399B2;">;</span></span>
+<span class="giallo-l"><span style="color: #CBA6F7;">int</span><span> initialized_data </span><span style="color: #94E2D5;">=</span><span style="color: #FAB387;"> 42</span><span style="color: #9399B2;">;</span></span></code></pre>
+<p><em>Depending on how variables are declared in C they will reside in different sections of the binary</em></p>
 <h3 id="inspecting-the-code-we-just-created">Inspecting the code we just created</h3>
-<p>arm-none-eabi-objdump</p>
+<p>I would like to take the time to look at what we have got so far. Running our Assembler <em>arm-none-eabi-as</em> on the latest version
+of <em>main.s</em> gave us a file called <em>a.out</em>. We can inspect <em>a.out</em> with a tool called <em>arm-none-eabi-objdump</em>. Here we find our
+<em>reset_handler</em> again. Noteworthy is the address of 00000000 right next to <em>reset_handler</em>. Earlier we have noted that,
+in order for our program to run on an STM32H7 we need to put <em>reset_handler</em> at location 0x08000000. Yet right now it is at
+location 0x00000000 Earlier we have noted that,
+in order for our program to run on an STM32H7 we need to put <em>reset_handler</em> at location 0x08000000. Yet right now it is at
+location 0x00000000. <em>This ain't gonna work then!</em> I hear you say. <em>You're god damn right</em> I reply. In the next chapter we will
+learn how we can link and relocate our relocatable object file into an exectuable file that an STM32H7 can understand.</p>
+<pre class="giallo" style="color: #CDD6F4; background-color: #1E1E2E;"><code data-lang="c"><span class="giallo-l"><span>jan@jan:</span><span style="color: #94E2D5;">~</span><span>$ arm</span><span style="color: #94E2D5;">-</span><span>none</span><span style="color: #94E2D5;">-</span><span>eabi</span><span style="color: #94E2D5;">-</span><span>objdump </span><span style="color: #94E2D5;">-</span><span>dS a.out </span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span>a.out:     file format elf32</span><span style="color: #94E2D5;">-</span><span>littlearm</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span>Disassembly of section .text:</span></span>
+<span class="giallo-l"></span>
+<span class="giallo-l"><span style="color: #CBA6F7;">0</span><span style="color: #FAB387;">0000000</span><span style="color: #94E2D5;"> &lt;</span><span>reset_handler</span><span style="color: #94E2D5;">&gt;</span><span>:</span></span>
+<span class="giallo-l"><span style="color: #FAB387;">   0</span><span>:   46c0            nop                     @ </span><span style="color: #9399B2;">(</span><span>mov r8</span><span style="color: #9399B2;">,</span><span> r8</span><span style="color: #9399B2;">)</span></span>
+<span class="giallo-l"><span style="color: #FAB387;">   2</span><span>:   e7fd            b.n     </span><span style="color: #FAB387;">0</span><span style="color: #94E2D5;"> &lt;</span><span>reset_handler</span><span style="color: #94E2D5;">&gt;</span></span></code></pre>
+<p><em>Inspecting the contents of a.out with arm-none-eabi-objdump</em></p>
 <h2 id="linking">Linking</h2>
 <p>relocatable code</p>
-<p>basic sections</p>
+<p>basic linker script</p>
+<p>basic sections (.text .bss. data)</p>
 <h2 id="flashing">Flashing</h2>
 <h1 id="blinky-example">Blinky example</h1>
 <p>building a small blinky application</p>
